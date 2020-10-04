@@ -1,0 +1,27 @@
+-- Insert records into Invoices table
+ 
+INSERT INTO `invoices` (`tran_date`,`reference`,`total`,`customer_id`,`coa_id`,`salesman_id`)
+SELECT `new_sale`.`date`,`payments`.`doc_number`,`payments`.`amount`,`new_sale`.`customer`, 120 AS Account_id,`new_sale`.`salesman`
+ FROM `payments` 
+JOIN `new_sale` ON `new_sale`.`doc_number`=`payments`.`doc_number`
+WHERE `payments`.`doc_number` = '0-20205626115653-6'
+GROUP BY `payments`.`doc_number`, `new_sale`.`customer`,`new_sale`.`salesman`,`payments`.`amount`,`payments`.`type`,`payments`.`mpesa_code`,`new_sale`.`date`;
+
+-- Insert records into Invoice_lines table
+INSERT INTO `invoice_lines` (`product`,`quantity`,line_amount,`invoice_id`,`line_coa_id`)
+SELECT `product`,`quantity`,(-`quantity`*`sale_price`) AS line_amount, 
+(SELECT MAX(id) FROM `invoices`) AS invoice_id, 510 AS line_coa_id FROM `new_sale`
+WHERE `doc_number` = '0-20205626115653-6';
+
+
+-- Insert records into Invoice_payments table
+INSERT INTO `invoice_payments`(`tran_date`,`description`,`reference`,`total`,`coa_id`)
+SELECT `payments`.`date`,CONCAT (`payments`.`type` ,':',`payments`.`cheque_number` ,`payments`.`mpesa_code`) AS description, 
+`payments`.`doc_number`,`payments`.`amount`, 110 AS coa_id FROM `payments` 
+JOIN `new_sale` ON `new_sale`.`doc_number`=`payments`.`doc_number`
+WHERE `payments`.`doc_number` = '0-20205626115653-6'
+GROUP BY `payments`.`doc_number`, `payments`.`amount`,`payments`.`type`,`payments`.`mpesa_code`,`payments`.`cheque_number`;
+
+UPDATE `invoices` SET `invoice_payment_id` =
+(SELECT id FROM `invoice_payments` WHERE `reference` = '0-20205626115653-6'),`status`=1
+WHERE `reference` = '0-20205626115653-6';
